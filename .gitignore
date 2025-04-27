@@ -1,0 +1,37 @@
+# Ignore build artifacts
+build/
+install/
+log/
+
+# Python garbage
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+
+# Virtual environments
+leap_env/
+env/
+.venv/
+
+# ROS 2 specific
+.colcon/
+*.launch.pyc
+
+# VSCode settings (optional)
+.vscode/
+
+# MacOS / Linux artifacts
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.swp
+*.bak
+*.tmp
+
+# Ignore compiled CFFI modules if any
+leapc_cffi/
+
