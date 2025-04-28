@@ -8,7 +8,11 @@ This project enables **teleoperation of a LEAP robotic hand** using the **Ultral
 
 - **Teleoperation**: Mapping human finger joint angles (from Ultraleap) to motor commands (on LEAP hand).
 - **System split**: Hand tracking and robot control are separated into dedicated ROS 2 nodes.
+<<<<<<< HEAD
 - **Environment**: ROS 2 Jazzy, Python 3.8, Ubuntu Linux VM.
+=======
+- **Environment**: ROS 2 Jazzy, Python 3.8 (via pyenv), Ubuntu Linux VM.
+>>>>>>> 28bf87c (Update README and requirements.txt for Python 3.8/ROS 2 Jazzy compatibility with Ultraleap SDK)
 
 ---
 
@@ -42,8 +46,6 @@ Download and install the Linux version from:
 
 (Install the SDK **before** installing the Python bindings.)
 
----
-
 ### 2. Install Ultraleap Python Bindings
 
 Clone and install the bindings manually:
@@ -55,12 +57,9 @@ cd leapc-python-bindings/leapc-python-api
 pip install .
 ```
 
-⚡ **Important:**  
-Install inside the same virtual environment (`leap_env`) that you will use to run the ROS 2 package.
+⚡ **Important:**  Install inside the same virtual environment (`leap_env38`) that you will use to run the ROS 2 package.
 
----
-
-### 3. Check installation
+### 3. Check Installation
 
 ```bash
 python
@@ -73,37 +72,35 @@ If no error appears, the installation was successful.
 ## How to Setup and Run
 
 ### 1. Install Required Software
-- ROS 2 Jazzy
+- ROS 2 Jazzy (Ubuntu 24.04)
 - Ultraleap Hand Tracking Service
+<<<<<<< HEAD
 - Python3.8, pip
+=======
+- Python 3.8 installed via [pyenv](https://github.com/pyenv/pyenv)
+>>>>>>> 28bf87c (Update README and requirements.txt for Python 3.8/ROS 2 Jazzy compatibility with Ultraleap SDK)
 - Clone this repository to **any folder you want** (no dependency on exact path).
 
----
-
-### 2. Create and Activate Virtual Environment
+### 2. Create and Activate Virtual Environment (Python 3.8)
 ```bash
-python3 -m venv ~/leap_env
-source ~/leap_env/bin/activate
+pyenv install 3.8.18  # if not already installed
+pyenv global 3.8.18
+python -m venv ~/leap_env38
+source ~/leap_env38/bin/activate
 ```
-
----
 
 ### 3. Install Python Dependencies
 ```bash
-cd ~/path/to/LeapHand-Teleoperation-Repo
+cd ~/LeapHand-Teleoperation-Repo
 pip install -r requirements.txt
 ```
 
----
-
 ### 4. Build the ROS 2 Workspace
 ```bash
-cd ~/path/to/LeapHand-Teleoperation-Repo/leap_ws
+cd ~/LeapHand-Teleoperation-Repo/leap_ws
 colcon build --symlink-install
 source install/setup.bash
 ```
-
----
 
 ### 5. Run the Launch File
 ```bash
@@ -116,33 +113,22 @@ ros2 launch leap_hand leap_ultra.launch.py
 
 ---
 
-## Current Known Issue
+## Critical Python Version Note
 
-- **Problem:**
-  - The node `leap_ultraleap_control.py` crashes because it cannot find the dynamic library `leapc_cffi/_leapc_cffi.so`.
-  - Exact Error: `ImportError: Cannot import leapc_cffi: No module named 'leapc_cffi._leapc_cffi'`
-
-- **Cause:**
-  - The Ultraleap Python SDK depends on a compiled CFFI shared object, typically located at `/usr/lib/ultraleap-hand-tracking-service/leapc_cffi/`.
-  - This file is either missing or not properly linked.
-
-- **Solution:**
-  - Reinstall the Ultraleap Hand Tracking Service.
-  - Confirm the presence of `_leapc_cffi.so`.
-
-- **Impact:**
-  - The LEAP hand initialization (`leaphand_node.py`) works fine.
-  - The Ultraleap-based control (`leap_ultraleap_control.py`) does not yet function due to the missing dependency.
+Due to Ultraleap's SDK providing `.so` files built for Python 3.8, **you must use Python 3.8** in your ROS 2 environment.
+- Ubuntu 24.04 system Python is 3.12 (incompatible).
+- Use **pyenv** to install and manage Python 3.8 cleanly.
+- All ROS helper packages (e.g., `empy`, `catkin_pkg`, `lark`, etc.) must be installed manually inside the Python 3.8 virtualenv.
 
 ---
 
 ## Summary of Problems Encountered (SOLVED)
 
-- Multiple motor control issues due to having 15 motors instead of 16.
-- Ultraleap TCP server integration was initially planned, later changed to direct sensor connection.
-- Python package (`leapc-python-bindings`) conflicted with ROS workspace structure.
-- Complexities with ROS 2 launch syntax and Python executables.
-- Missing critical shared libraries (`leapc_cffi`) at runtime. (Solution in previous section)
+- Initial missing shared library (`leapc_cffi`) due to Python version mismatch.
+- Need for manually building Python 3.8.
+- Reinstalling ROS helper libraries (`empy`, `catkin_pkg`, `lark`, etc.) in venv.
+- Resolving colcon build errors from missing Python modules.
+- Ultraleap CFFI compiled extensions tied to Python 3.8 specifically.
 
 ---
 
@@ -170,22 +156,18 @@ LeapHand-Teleoperation-Repo/
 │           │       ├── dynamixel_client.py
 │           │       └── leap_hand_utils.py
 ```
+
 ## Purpose of Each Python Script
 
 | Script                             | Purpose |
 |------------------------------------|---------|
-| `leaphand_node.py`                 | Main ROS 2 node that initializes and controls the LEAP hand motors. Handles low-level communication with Dynamixel motors using the `dynamixel_client.py`. Publishes and listens to ROS services to command the hand. |
-| `leap_ultraleap_control.py`        | ROS 2 node that reads live Ultraleap sensor data, computes flexion angles for each finger, maps them to motor commands, and sends them to the LEAP hand. |
-| `leap_teleop.py`                   | Provides helper functions for connecting to a TCP server for Ultraleap tracking data. Originally built for TCP-based setups but now supports direct integration too. Contains the `compute_all_flexion_angles_from_leap` function. |
-| `ultraleap_teleop.py`              | Standalone TCP client node designed for testing with fake Ultraleap server data. Useful for simulating input if real Ultraleap sensor is unavailable. |
-| `leap_hand_utils/dynamixel_client.py` | Python client class for the Dynamixel SDK. Provides functions to connect to motors, send motor commands, and read motor states (position, velocity, effort). |
-| `leap_hand_utils/leap_hand_utils.py`  | Helper utilities for converting joint angles between different hand formats (e.g., Allegro to LEAP Hand) and setting motor positions correctly according to hand kinematics. |
-
-
-
+| `leaphand_node.py`                 | Main ROS 2 node for LEAP hand motor control. |
+| `leap_ultraleap_control.py`        | ROS 2 node to read Ultraleap tracking data and generate motor commands. |
+| `leap_teleop.py`                   | Ultraleap TCP server helper (legacy support). |
+| `ultraleap_teleop.py`              | Standalone TCP testing client for fake Ultraleap data. |
+| `leap_hand_utils/dynamixel_client.py` | Python client for Dynamixel SDK motor communication. |
+| `leap_hand_utils/leap_hand_utils.py`  | Helper functions for hand kinematics and angle conversions. |
 
 ---
 
 # End of README
-
-

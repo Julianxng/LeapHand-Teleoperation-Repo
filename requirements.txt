@@ -1,6 +1,12 @@
-rclpy
-sensor_msgs
-std_msgs
+leap  
 numpy
-leap  # Ultraleap Python bindings
+empy
+catkin_pkg
+lark
+pyyaml
+argcomplete
+setuptools
+colcon-common-extensions
+rosdep
+
 
