@@ -8,7 +8,7 @@ This project enables **teleoperation of a LEAP robotic hand** using the **Ultral
 
 - **Teleoperation**: Mapping human finger joint angles (from Ultraleap) to motor commands (on LEAP hand).
 - **System split**: Hand tracking and robot control are separated into dedicated ROS 2 nodes.
-- **Environment**: ROS 2 Jazzy, Python 3.12, Ubuntu Linux VM.
+- **Environment**: ROS 2 Jazzy, Python 3.8, Ubuntu Linux VM.
 
 ---
 
