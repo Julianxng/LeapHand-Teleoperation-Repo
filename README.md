@@ -8,11 +8,9 @@ This project enables **teleoperation of a LEAP robotic hand** using the **Ultral
 
 - **Teleoperation**: Mapping human finger joint angles (from Ultraleap) to motor commands (on LEAP hand).
 - **System split**: Hand tracking and robot control are separated into dedicated ROS 2 nodes.
-<<<<<<< HEAD
 - **Environment**: ROS 2 Jazzy, Python 3.8, Ubuntu Linux VM.
-=======
 - **Environment**: ROS 2 Jazzy, Python 3.8 (via pyenv), Ubuntu Linux VM.
->>>>>>> 28bf87c (Update README and requirements.txt for Python 3.8/ROS 2 Jazzy compatibility with Ultraleap SDK)
+
 
 ---
 
@@ -74,11 +72,8 @@ If no error appears, the installation was successful.
 ### 1. Install Required Software
 - ROS 2 Jazzy (Ubuntu 24.04)
 - Ultraleap Hand Tracking Service
-<<<<<<< HEAD
 - Python3.8, pip
-=======
 - Python 3.8 installed via [pyenv](https://github.com/pyenv/pyenv)
->>>>>>> 28bf87c (Update README and requirements.txt for Python 3.8/ROS 2 Jazzy compatibility with Ultraleap SDK)
 - Clone this repository to **any folder you want** (no dependency on exact path).
 
 ### 2. Create and Activate Virtual Environment (Python 3.8)
