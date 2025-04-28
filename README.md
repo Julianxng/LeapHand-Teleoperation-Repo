@@ -75,7 +75,7 @@ If no error appears, the installation was successful.
 ### 1. Install Required Software
 - ROS 2 Jazzy
 - Ultraleap Hand Tracking Service
-- Python3.12, pip
+- Python3.8, pip
 - Clone this repository to **any folder you want** (no dependency on exact path).
 
 ---
