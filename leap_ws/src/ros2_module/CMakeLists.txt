@@ -32,9 +32,13 @@ ament_package()
 # Install Python scripts
 install(PROGRAMS
   scripts/leaphand_node.py
-  scripts/ros2_example.py
-  scripts/leap_ultraleap_control.py 
+  scripts/ultraleap_tcp_client.py 
   scripts/leap_teleop.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# Install helper package
+install(DIRECTORY scripts/leap_hand_utils
   DESTINATION lib/${PROJECT_NAME}
 )
 

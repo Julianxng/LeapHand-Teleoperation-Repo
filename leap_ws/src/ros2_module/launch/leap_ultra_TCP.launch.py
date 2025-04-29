@@ -3,7 +3,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     return LaunchDescription([
-        # Start the LEAP hand control node (your hardware driver/service)
+        # Start the LEAP hand control node (hardware driver)
         Node(
             package='leap_hand',
             executable='leaphand_node.py',
@@ -18,13 +18,16 @@ def generate_launch_description():
             ]
         ),
 
-        # Start your Ultraleap-based teleoperation controller
+        # Start the TCP client node that listens to Ultraleap data
         Node(
             package='leap_hand',
-            executable='leap_ultraleap_control.py',
-            name='leap_ultraleap_control',
+            executable='tcp_leap_receiver.py',
+            name='tcp_leap_receiver',
             emulate_tty=True,
-            output='screen'
+            output='screen',
+            parameters=[
+                {'host': '127.0.0.1'},  # TCP server address
+                {'port': 60002}         # TCP server port
+            ]
         ),
     ])
-
