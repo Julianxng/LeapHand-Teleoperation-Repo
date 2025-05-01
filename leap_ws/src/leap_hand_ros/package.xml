@@ -1,5 +1,5 @@
 <package format="3">
-  <name>leap_hand</name>
+  <name>leap_hand_ros</name>
   <version>0.0.1</version>
   <description>Teleoperation package for controlling the LEAP hand using Ultraleap tracking</description>
 

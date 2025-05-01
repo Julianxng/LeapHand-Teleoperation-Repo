@@ -38,11 +38,11 @@ LeapHand-Teleoperation-Repo/
 ├── requirements.txt
 ├── leap_ws/
 │   └── src/
-│       └── ros2_module/
+│       └── leap_hand/
 │           ├── CMakeLists.txt
 │           ├── package.xml
 │           ├── launch/
-│           │   └── leap_hand_launch.py
+│           │   └── leap_ultra_TCP.py
 │           ├── scripts/
 │           │   ├── leaphand_node.py
 │           │   ├── leap_tcp_client_node.py
@@ -76,6 +76,7 @@ pyenv activate leap_env38
 
 ### 2. Install Server Requirements
 ```bash
+source ~/leap_env38/bin/activate
 cd ~/teleop_server
 pip install -r requirements.txt
 ```
@@ -120,6 +121,7 @@ python
 If no error is shown, the installation succeeded.
 
 
+
 ---
 
 ## ROS 2 Workspace Setup (Python 3.12)
@@ -128,6 +130,15 @@ If no error is shown, the installation succeeded.
 ```bash
 source /opt/ros/jazzy/setup.bash
 ```
+### Install System Python Packages for ROS 2 (IMPORTANT)
+Before building, ensure your system Python has the required packages:
+
+```bash
+sudo apt update
+sudo apt install python3-pip
+pip3 install -U catkin_pkg empy lark-parser pyparsing setuptools
+```
+⚡ Important: These must be installed globally (i.e., not inside your Python 3.8 virtualenv).
 
 ### 2. Build ROS 2 Workspace
 ```bash
@@ -152,7 +163,8 @@ python server.py
 ```bash
 cd ~/LeapHand-Teleoperation-Repo/leap_ws
 source install/setup.bash
-ros2 launch leap_hand leap_hand_launch.py
+ros2 launch leap_hand leap_ultra_TCP.launch.py
+
 ```
 
 ✅ This will start:

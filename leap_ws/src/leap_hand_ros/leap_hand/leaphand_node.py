@@ -6,9 +6,9 @@ from rclpy.node import Node
 from sensor_msgs.msg import JointState
 from std_msgs.msg import String
 
-from leap_hand_utils.dynamixel_client import DynamixelClient
-import leap_hand_utils.leap_hand_utils as lhu
-from leap_hand.srv import LeapPosition, LeapVelocity, LeapEffort, LeapPosVelEff
+from leap_hand.leap_hand_utils.dynamixel_client import DynamixelClient
+import leap_hand.leap_hand_utils.leap_hand_utils as lhu
+from leap_hand_ros.srv import LeapPosition, LeapVelocity, LeapEffort, LeapPosVelEff
 
 class LeapNode(Node):
     def __init__(self):

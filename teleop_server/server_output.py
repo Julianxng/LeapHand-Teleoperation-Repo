@@ -1,27 +1,28 @@
 import socket
 
-# Use the same HOST and PORT as defined in the server
-HOST = '127.0.0.1'  # Localhost, assuming server.py is running locally
-PORT = 60002         # The same port the server is listening on
+HOST = '127.0.0.1'
+PORT = 60002
 
 def start_tcp_client():
-    # Create a TCP/IP socket
+    print(f"Connecting to Ultraleap TCP server at {HOST}:{PORT}...")
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
-        # Connect the socket to the server's address and port
         client_socket.connect((HOST, PORT))
-        print(f"Connected to server at {HOST}:{PORT}")
+        print("Connected.")
 
+        buffer = ''
         while True:
-            try:
-                # Receive data from the server
-                data = client_socket.recv(1024)  # Buffer size of 1024 bytes
-                if not data:
-                    break  # If no data, the connection has been closed
-                print(f"Received data: {data.decode('utf-8')}")
-            except KeyboardInterrupt:
-                print("\nConnection closed by user.")
+            data = client_socket.recv(4096).decode('utf-8')
+            if not data:
                 break
+
+            buffer += data
+            while '\n' in buffer:
+                line, buffer = buffer.split('\n', 1)
+                if line:
+                    numbers = list(map(float, line.strip().split(',')))
+                    print(f"Received {len(numbers)} floats:")
+                    print(numbers)   # <-- print all floats nicely
+                    print()          # Add a blank line between frames for readability
 
 if __name__ == '__main__':
     start_tcp_client()
-

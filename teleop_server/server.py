@@ -27,15 +27,26 @@ class Runner(leap.Listener):
         print(f"Found device {info.serial}")
 
     def on_tracking_event(self, event):
-        # print(f"Frame {event.tracking_frame_id} with {len(event.hands)} hands.")
-        for hand in event.hands:
-            # hand_type = "left" if str(hand.type) == "HandType.Left" else "right"
-            # output_str = f"Hand id {hand.id} is a {hand_type} hand with position ({hand.palm.position.x}, {hand.palm.position.y - 300}, {hand.palm.position.z})."
-            self.last_update = f"{hand.palm.position.x},{hand.palm.position.y - 300},{hand.palm.position.z}\n"
-        with self.network_lock: 
-            if self.conn is not None and not self.last_update is None:
-                self.conn.sendall(self.last_update.encode('utf-8'))
-                self.last_update = None
+        all_positions = []
+
+        if event.hands:
+            hand = event.hands[0]
+            for digit in hand.digits:
+                for bone in digit.bones:
+                    pos = bone.next_joint
+                    all_positions.append(f"{pos.x},{pos.y},{pos.z}")
+
+            # Append the palm position at the end (landmark 20)
+            # Append the palm position (landmark 20)
+            palm = hand.palm.position
+            all_positions.append(f"{palm.x},{palm.y},{palm.z}")
+
+            # Append the wrist position (landmark 21)
+            wrist = hand.arm.next_joint  # or hand.wrist.position if available
+            all_positions.append(f"{wrist.x},{wrist.y},{wrist.z}")
+
+        if all_positions:
+            self.last_update = ",".join(all_positions) + "\n"
 
 
     # Networking
@@ -55,7 +66,17 @@ class Runner(leap.Listener):
                             break
                     except BlockingIOError:
                         pass
-                    time.sleep(0.1)
+
+                    # Send tracking update to the client
+                    with self.network_lock:
+                        if self.conn is not None and self.last_update is not None:
+                            try:
+                                self.conn.sendall(self.last_update.encode('utf-8'))
+                            except (BlockingIOError, BrokenPipeError):
+                                break
+                            self.last_update = None
+
+                    time.sleep(0.01)
             self.conn = None
 
 
