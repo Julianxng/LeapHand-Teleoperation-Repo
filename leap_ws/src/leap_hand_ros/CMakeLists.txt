@@ -38,6 +38,14 @@ install(
   DESTINATION lib/${PROJECT_NAME}
   RENAME tcp_leap_receiver
 )
+install(DIRECTORY
+  leap_urdf
+  DESTINATION share/${PROJECT_NAME}
+)
+install(DIRECTORY rviz/
+  DESTINATION share/${PROJECT_NAME}/rviz
+)
+
 
 
 

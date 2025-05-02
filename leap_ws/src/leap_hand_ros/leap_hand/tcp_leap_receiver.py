@@ -9,6 +9,8 @@ from math import pi
 from rclpy.node import Node
 from leap_hand.leap_hand_utils.dynamixel_client import DynamixelClient
 import leap_hand.leap_hand_utils.leap_hand_utils as lhu
+from sensor_msgs.msg import JointState
+
 
 # TCP settings
 HOST = '127.0.0.1'   # Server IP
@@ -17,6 +19,7 @@ PORT = 60002         # Server port
 # Motor settings
 ALL_MOTOR_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
 FLEXION_MOTOR_IDS = [2, 3, 4, 5, 6, 7, 9, 10, 11, 13, 14, 15]
+LANDMARK_COUNT = 21
 
 class TCPLeapReceiver(Node):
     def __init__(self):
@@ -40,6 +43,8 @@ class TCPLeapReceiver(Node):
         self.timer = self.create_timer(update_rate, self.update_hand_position)
         self.create_timer(1.0, self.set_ready)
         #self.create_timer(2.0, self.test_motor_responses)
+        self.joint_pub = self.create_publisher(JointState, '/joint_states', 10)
+
 
         
 
@@ -141,10 +146,10 @@ class TCPLeapReceiver(Node):
 
         try:
             landmarks = np.array([float(x) for x in line.split(',')])
-            if len(landmarks) != 66:
-                self.get_logger().warn(f"Received {len(landmarks)} floats, expected 60.")
+            if len(landmarks) != 63:
+                self.get_logger().warn(f"Received {len(landmarks)} floats, expected 63.")
                 return
-            landmarks = landmarks.reshape((22, 3))
+            landmarks = landmarks.reshape((21, 3))
             if self.debug:
                 print(f"[PARSE] Parsed {len(landmarks)} floats into landmarks shape {landmarks.shape}")
                 print("[PARSE] First 5 landmarks:\n", landmarks[:5])
@@ -153,12 +158,22 @@ class TCPLeapReceiver(Node):
             if self.debug:
                  print(f"[ANGLES] Flexion angles ({len(flexion_angles)}): {np.round(flexion_angles, 2)}")
             motor_commands = np.ones(15) * pi
+            rviz_commands = np.zeros(15) 
             for i, motor_id in enumerate(FLEXION_MOTOR_IDS):
                 index = ALL_MOTOR_IDS.index(motor_id)
                 motor_commands[index] = self.flexion_deg_to_motor_command(flexion_angles[i])
+                rviz_commands[index] = self.JointStates_command(flexion_angles[i])
                 if self.debug:
                     print(f"[MOTOR MAP] motor_id={motor_id}, angle_deg={flexion_angles[i]:.2f} → motor_cmd={motor_commands[index]:.3f}")
             self.dxl_client.write_desired_pos(ALL_MOTOR_IDS, motor_commands)
+            ### Joint states topic logic
+            motor_commands_with_dummy = np.insert(rviz_commands, 4, 0.0)
+            joint_msg = JointState()
+            joint_msg.header.stamp = self.get_clock().now().to_msg()
+            joint_msg.name = [str(i) for i in range(16)]  # URDF joint names are "0" to "15"
+            joint_msg.position = motor_commands_with_dummy.tolist()
+            self.joint_pub.publish(joint_msg)
+            
             if self.debug:
                 print("[COMMAND] Final motor command array:")
                 print(np.round(motor_commands, 3))
@@ -171,7 +186,10 @@ class TCPLeapReceiver(Node):
         #if self.debug:
          #       print(f"[ANGLE CALC] angle_deg = {angle_deg}, angle_rad = {angle_rad}")
         return np.clip(angle_rad, 3.14, 5.14)  # Clip to your mechanical joint limit
-
+    
+    def JointStates_command(self, angle_deg):
+        JointStates_rad = np.radians(angle_deg)
+        return JointStates_rad
 
     def angle_between(self, v1, v2):
         v1_u = v1 / (np.linalg.norm(v1) + 1e-6)
@@ -181,60 +199,52 @@ class TCPLeapReceiver(Node):
 
     def compute_flexions_from_landmarks(self, landmarks):
         angles = []
+
+        # Define landmark indices for each finger
         finger_indices = {
-            'thumb': [0, 1, 2, 3],
-            'index': [4, 5, 6, 7],
+            'thumb':  [0, 1, 2, 3],      # CMC, MCP, IP, Tip
+            'index':  [4, 5, 6, 7],      # MCP, PIP, DIP, Tip
             'middle': [8, 9, 10, 11],
-            'ring': [12, 13, 14, 15],
+            'ring':   [12, 13, 14, 15],
+            'pinky':  [16, 17, 18, 19],
         }
 
-
-
-        for name in ['index', 'middle', 'ring']:
+        for name in ['index', 'middle', 'ring', 'pinky']:
             idx = finger_indices[name]
-            vec1 = landmarks[idx[1]] - landmarks[idx[0]]
-            vec2 = landmarks[idx[2]] - landmarks[idx[1]]
-            vec3 = landmarks[idx[3]] - landmarks[idx[2]]
-            vec4 = landmarks[idx[3]] - landmarks[idx[2]]  # Optional: can use to compare to vec3
+            vec_mc = landmarks[idx[0]]
+            vec_pp = landmarks[idx[1]]
+            vec_ip = landmarks[idx[2]]
+            vec_dp = landmarks[idx[3]]
 
-            mcp = self.angle_between(vec1, vec2)
-            pip = self.angle_between(vec2, vec3)
-            dip = self.angle_between(vec3, vec4)
+            mcp_angle = self.angle_between(vec_mc, vec_pp)
+            pip_angle = self.angle_between(vec_pp, vec_ip)
+            dip_angle = self.angle_between(vec_ip, vec_dp)
 
             if self.debug:
-                print(f"\n[{name.upper()}] Landmark indices: {idx}")
-                print(f"[{name.upper()}] Vectors:")
-                print(f"  vec1 (MCP segment): {vec1}")
-                print(f"  vec2 (PIP segment): {vec2}")
-                print(f"  vec3 (DIP segment): {vec3}")
-                print(f"  vec4 (DIP→TIP check): {vec4}")
-                print(f"[{name.upper()}] Angles → MCP: {mcp:.2f}°, PIP: {pip:.2f}°, DIP: {dip:.2f}°")
+                print(f"\n[{name.upper()}] Landmarks: {idx}")
+                print(f"[{name.upper()}] Angles → MCP: {mcp_angle:.2f}°, PIP: {pip_angle:.2f}°, DIP: {dip_angle:.2f}°")
 
-            angles.extend([mcp, pip, dip])
+            angles.extend([mcp_angle, pip_angle, dip_angle])
 
-        # Thumb calculation
+        # Thumb
         idx = finger_indices['thumb']
-        vec1 = landmarks[idx[1]] - landmarks[idx[0]]  # CMC segment
-        vec2 = landmarks[idx[2]] - landmarks[idx[1]]  # MCP segment
-        vec3 = landmarks[idx[3]] - landmarks[idx[2]]  # IP segment
-        vec4 = landmarks[idx[3]] - landmarks[idx[2]]  # DIP→tip (for completeness)
+        vec_cmc = landmarks[idx[0]]
+        vec_mcp = landmarks[idx[1]]
+        vec_ip  = landmarks[idx[2]]
+        vec_tip = landmarks[idx[3]]
 
-        cmc = self.angle_between(vec1, vec2)
-        mcp = self.angle_between(vec2, vec3)
-        ip = self.angle_between(vec3, vec4)
+        cmc_angle = self.angle_between(vec_cmc, vec_mcp)
+        mcp_angle = self.angle_between(vec_mcp, vec_ip)
+        ip_angle  = self.angle_between(vec_ip, vec_tip)
 
         if self.debug:
-            print(f"\n[THUMB] Landmark indices: {idx}")
-            print(f"[THUMB] Vectors:")
-            print(f"  vec1 (CMC segment): {vec1}")
-            print(f"  vec2 (MCP segment): {vec2}")
-            print(f"  vec3 (IP segment): {vec3}")
-            print(f"  vec4 (IP→tip check): {vec4}")
-            print(f"[THUMB] Angles → CMC: {cmc:.2f}°, MCP: {mcp:.2f}°, IP: {ip:.2f}°")
+            print(f"\n[THUMB] Landmarks: {idx}")
+            print(f"[THUMB] Angles → CMC: {cmc_angle:.2f}°, MCP: {mcp_angle:.2f}°, IP: {ip_angle:.2f}°")
 
-        angles.extend([cmc, mcp, ip])
+        angles.extend([cmc_angle, mcp_angle, ip_angle])
 
         return angles
+
 
 
 def main(args=None):

@@ -2,17 +2,13 @@ import leap
 import time
 import socket
 import threading
-
 from constants import *
 
 class Runner(leap.Listener):
-
     def __init__(self):
-        self.conn = None
-        self.network_lock = threading.Lock()
         self.last_update = None
-
-    # Leap tracking callbacks
+        self.network_lock = threading.Lock()
+        self.connections = []
 
     def on_connection_event(self, event):
         print("Device connected")
@@ -23,76 +19,78 @@ class Runner(leap.Listener):
                 info = event.device.get_info()
         except leap.LeapCannotOpenDeviceError:
             info = event.device.get_info()
-
         print(f"Found device {info.serial}")
 
     def on_tracking_event(self, event):
         all_positions = []
-
         if event.hands:
             hand = event.hands[0]
-            for digit in hand.digits:
-                for bone in digit.bones:
-                    pos = bone.next_joint
-                    all_positions.append(f"{pos.x},{pos.y},{pos.z}")
+            for digit in [hand.thumb, hand.index, hand.middle, hand.ring, hand.pinky]:
+                for bone in [digit.metacarpal, digit.proximal, digit.intermediate, digit.distal]:
+                    vec_x = bone.next_joint.x - bone.prev_joint.x
+                    vec_y = bone.next_joint.y - bone.prev_joint.y
+                    vec_z = bone.next_joint.z - bone.prev_joint.z
+                    all_positions.append(f"{vec_x},{vec_y},{vec_z}")
 
-            # Append the palm position at the end (landmark 20)
-            # Append the palm position (landmark 20)
             palm = hand.palm.position
             all_positions.append(f"{palm.x},{palm.y},{palm.z}")
-
-            # Append the wrist position (landmark 21)
-            wrist = hand.arm.next_joint  # or hand.wrist.position if available
-            all_positions.append(f"{wrist.x},{wrist.y},{wrist.z}")
 
         if all_positions:
             self.last_update = ",".join(all_positions) + "\n"
 
-
-    # Networking
-
-    def run(self, server):
+    def run_server_on_port(self, server_socket):
         while True:
-            print(f"TCP server waiting to connect")
-            self.conn, addr = server.accept()
-            self.conn.setblocking(False)
-            with self.conn:
-                print(f"TCP server connected by {addr}")
-                while True:
-                    try:
-                        data = self.conn.recv(1024)
-                        if not data:
-                            print("TCP server disconnect")
+            print(f"[PORT {server_socket.getsockname()[1]}] Waiting for connection...")
+            conn, addr = server_socket.accept()
+            conn.setblocking(False)
+            print(f"[PORT {server_socket.getsockname()[1]}] Connected by {addr}")
+
+            while True:
+                try:
+                    _ = conn.recv(1024)
+                except BlockingIOError:
+                    pass
+                except ConnectionResetError:
+                    print(f"[PORT {server_socket.getsockname()[1]}] Client disconnected")
+                    break
+
+                with self.network_lock:
+                    if self.last_update is not None:
+                        try:
+                            conn.sendall(self.last_update.encode('utf-8'))
+                        except (BlockingIOError, BrokenPipeError):
+                            print(f"[PORT {server_socket.getsockname()[1]}] Send failed")
                             break
-                    except BlockingIOError:
-                        pass
+                        self.last_update = None
 
-                    # Send tracking update to the client
-                    with self.network_lock:
-                        if self.conn is not None and self.last_update is not None:
-                            try:
-                                self.conn.sendall(self.last_update.encode('utf-8'))
-                            except (BlockingIOError, BrokenPipeError):
-                                break
-                            self.last_update = None
+                time.sleep(0.01)
 
-                    time.sleep(0.01)
-            self.conn = None
-
+            conn.close()
 
 def main():
-
     runner = Runner()
     connection = leap.Connection()
     connection.add_listener(runner)
+    connection.set_tracking_mode(leap.TrackingMode.Desktop)
 
     with connection.open(), \
-            socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
-        connection.set_tracking_mode(leap.TrackingMode.Desktop)
-        server.bind((HOST, PORT))
-        server.listen()
-        runner.run(server)
+         socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server1, \
+         socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server2:
 
+        server1.bind((HOST, PORT1))
+        server2.bind((HOST, PORT2))
+        server1.listen()
+        server2.listen()
+
+        # Start two threads for two TCP clients
+        t1 = threading.Thread(target=runner.run_server_on_port, args=(server1,))
+        t2 = threading.Thread(target=runner.run_server_on_port, args=(server2,))
+
+        t1.start()
+        t2.start()
+
+        t1.join()
+        t2.join()
 
 if __name__ == "__main__":
     main()
