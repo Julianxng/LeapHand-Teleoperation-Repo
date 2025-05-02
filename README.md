@@ -22,11 +22,12 @@ This project enables **teleoperation of a LEAP robotic hand** using the **Ultral
 |---------------------------------|-----------------------------------------------------------------------|
 | `server.py` (TCP server)        | Reads Ultraleap tracking data and sends all landmarks over TCP.        |
 | `leap_tcp_client_node.py`       | ROS 2 node that connects to the TCP server, parses data, computes joint angles, and publishes motor commands. |
-| `leaphand_node.py`              | ROS 2 node that receives motor commands and drives LEAP hand motors via Dynamixel SDK. |
+
 
 **Information Flow:**
 
-- Ultraleap sensor -> `server.py` -> TCP connection -> `leap_tcp_client_node.py` -> ROS 2 topic -> `leaphand_node.py`
+- Ultraleap sensor -> `server.py` -> TCP connection -> `leap_tcp_client_node.py` -> Motors
+										 -> Joint_states topic -> RVIZ
 
 ---
 
@@ -38,23 +39,30 @@ LeapHand-Teleoperation-Repo/
 ├── requirements.txt
 ├── leap_ws/
 │   └── src/
-│       └── leap_hand/
+│       └── leap_hand_ros/
 │           ├── CMakeLists.txt
 │           ├── package.xml
 │           ├── launch/
-│           │   └── leap_ultra_TCP.py
-│           ├── scripts/
-│           │   ├── leaphand_node.py
-│           │   ├── leap_tcp_client_node.py
-│           │   └── leap_hand_utils/
+│           │   └── leap_ultra_TCPlaunch.py
+│           ├── leap_hand/
+│           │   ├── leaphand_node.py (not used right now)
+│           │   ├── tcp_leap_reciever.py (main code)
+│           │   └── leap_hand_utils/ 
 │           │       ├── __init__.py
 │           │       ├── dynamixel_client.py
 │           │       └── leap_hand_utils.py
+│           ├── leap_urdf/
+│           │   ├── robot.urdf
+│           │   └── meshes/
+│           │       ├── All .STL files for URDF
+│           ├── rviz/
+│           │   ├── Leap.rviz (config)
 │           └── srv/
 │               ├── LeapPosition.srv
 │               ├── LeapVelocity.srv
 │               ├── LeapEffort.srv
 │               └── LeapPosVelEff.srv
+
 ├── teleop_server/
 │   ├── server.py
 │   ├── constants.py
@@ -170,7 +178,7 @@ ros2 launch leap_hand leap_ultra_TCP.launch.py
 ✅ This will start:
 - `server.py` (Ultraleap readings and TCP initiation)
 - `leap_tcp_client_node.py` (TCP client receiving Ultraleap data, calculating flexions, publishing commands)
-- `leaphand_node.py` (motor control)
+- Rviz + Joint_states topic
 
 
 ---
@@ -191,8 +199,7 @@ ros2 launch leap_hand leap_ultra_TCP.launch.py
 
 | Script                             | Purpose |
 |------------------------------------|---------|
-| `leaphand_node.py`                 | Motor control node. Receives motor targets via ROS topic and drives motors. |
-| `leap_tcp_client_node.py`          | Connects to TCP server, parses landmark data, computes flexion angles, publishes motor targets. |
+| `TCP_leap_reciever.py`          | Connects to TCP server, parses landmark data, computes flexion angles, publishes motor targets. |
 | `leap_hand_utils/dynamixel_client.py` | Communicates with Dynamixel motors. |
 | `leap_hand_utils/leap_hand_utils.py`  | Helper functions for kinematic conversions (Allegro/LEAP hand mapping). |
 | `server.py` (teleop_server)        | TCP server broadcasting Ultraleap tracking data (landmarks). |
